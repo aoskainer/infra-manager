@@ -1,0 +1,37 @@
+name: PR Size Check
+
+on:
+  pull_request:
+
+jobs:
+  pr_size_check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR size
+        run: |
+          diff_output=$(git diff --shortstat origin/$GITHUB_BASE_REF origin/$GITHUB_HEAD_REF)
+
+          IFS=' ' read -ra fields <<< "$diff_output"
+
+          insertion=${fields[3]}
+          deletion=${fields[5]}
+          if [ -z "$deletion" ]; then
+            changed=$insertion
+            deletion=0
+          else
+            changed=$(($insertion + $deletion))
+          fi
+
+          echo "insertion = $insertion"
+          echo "deletion = $deletion"
+          echo "changed = $changed"
+
+          if [ "$changed" -gt 400 ]; then
+            echo "Error: PR size exceeds 400 lines change ($changed lines)."
+            exit 1
+          fi
